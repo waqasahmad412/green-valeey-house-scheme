@@ -1,0 +1,572 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // =========================================================================
+    // 0. GLOBAL SAFETY NET (DEFAULT DENY)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 1. HARDENED GLOBAL PRIMITIVES
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (
+        request.auth.token.email == 'wama93637@gmail.com' ||
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'wama93637@gmail.com' ||
+        (request.auth.token.email_verified == true && exists(/databases/$(database)/documents/admins/$(request.auth.uid)))
+      );
+    }
+
+    function isBoundedStringArray(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= 500));
+    }
+
+    // =========================================================================
+    // 2. ENTITY VALIDATION BLUEPRINTS (ANTI-UPDATE-GAP)
+    // =========================================================================
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'fullName', 'email', 'phone', 'role', 'status', 'favoriteHouseIds', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'fullName', 'email', 'phone', 'role', 'status', 'favoriteHouseIds', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.role is string && data.role in ['resident', 'admin'] &&
+        data.status is string && data.status in ['active', 'suspended'] &&
+        isBoundedStringArray(data.favoriteHouseIds, 20) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'grantedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'grantedAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.grantedAt is timestamp;
+    }
+
+    function isValidHouse(data) {
+      return data.keys().hasAll([
+          'id', 'houseNumber', 'title', 'houseType', 'plotSize',
+          'bedrooms', 'bathrooms', 'kitchenDetails', 'coveredAreaSqFt',
+          'pricePKR', 'availability', 'sector', 'street', 'description',
+          'floorPlanSummary', 'images', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'houseNumber', 'title', 'houseType', 'plotSize',
+          'bedrooms', 'bathrooms', 'kitchenDetails', 'coveredAreaSqFt',
+          'pricePKR', 'availability', 'sector', 'street', 'description',
+          'floorPlanSummary', 'images', 'coordinates3D', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.houseNumber is string && data.houseNumber.size() >= 2 && data.houseNumber.size() <= 30 &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+        data.houseType is string && data.houseType in ['3 Marla', '5 Marla', '10 Marla', '1 Kanal'] &&
+        data.plotSize is string && data.plotSize in ['3 Marla', '5 Marla', '10 Marla', '1 Kanal'] &&
+        data.bedrooms is number && data.bedrooms >= 1 && data.bedrooms <= 20 &&
+        data.bathrooms is number && data.bathrooms >= 1 && data.bathrooms <= 20 &&
+        data.kitchenDetails is string && data.kitchenDetails.size() <= 300 &&
+        data.coveredAreaSqFt is number && data.coveredAreaSqFt >= 200 && data.coveredAreaSqFt <= 50000 &&
+        data.pricePKR is number && data.pricePKR >= 100000 &&
+        data.availability is string && data.availability in ['Available', 'Reserved', 'Sold'] &&
+        data.sector is string && data.sector.size() <= 60 &&
+        data.street is string && data.street.size() <= 60 &&
+        data.description is string && data.description.size() <= 2000 &&
+        data.floorPlanSummary is string && data.floorPlanSummary.size() <= 500 &&
+        isBoundedStringArray(data.images, 6) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPark(data) {
+      return data.keys().hasAll(['id', 'name', 'sector', 'areaSize', 'openingHours', 'description', 'facilities', 'imageUrl', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'name', 'sector', 'areaSize', 'openingHours', 'description', 'facilities', 'imageUrl', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.sector is string && data.sector.size() <= 80 &&
+        data.areaSize is string && data.areaSize.size() <= 60 &&
+        data.openingHours is string && data.openingHours.size() <= 100 &&
+        data.description is string && data.description.size() <= 1500 &&
+        isBoundedStringArray(data.facilities, 10) &&
+        data.imageUrl is string && data.imageUrl.size() <= 500 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAmenity(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'openingHours', 'description', 'highlights', 'imageUrl', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'name', 'category', 'openingHours', 'description', 'highlights', 'imageUrl', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.category is string && data.category in ['Gym', 'Security', 'Community', 'Recreation'] &&
+        data.openingHours is string && data.openingHours.size() <= 100 &&
+        data.description is string && data.description.size() <= 1500 &&
+        isBoundedStringArray(data.highlights, 10) &&
+        data.imageUrl is string && data.imageUrl.size() <= 500 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidHouseInquiry(data) {
+      return data.keys().hasAll(['id', 'userId', 'houseId', 'houseNumber', 'fullName', 'email', 'phone', 'message', 'status', 'adminResponse', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'houseId', 'houseNumber', 'fullName', 'email', 'phone', 'message', 'status', 'adminResponse', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        isValidId(data.houseId) &&
+        data.houseNumber is string && data.houseNumber.size() <= 30 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 1500 &&
+        data.status is string && data.status in ['Pending', 'Responded', 'Closed'] &&
+        data.adminResponse is string && data.adminResponse.size() <= 1500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVisitBooking(data) {
+      return data.keys().hasAll(['id', 'userId', 'houseId', 'houseNumber', 'fullName', 'email', 'phone', 'preferredDate', 'preferredTime', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'houseId', 'houseNumber', 'fullName', 'email', 'phone', 'preferredDate', 'preferredTime', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        isValidId(data.houseId) &&
+        data.houseNumber is string && data.houseNumber.size() <= 30 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.preferredDate is string && data.preferredDate.size() <= 30 &&
+        data.preferredTime is string && data.preferredTime.size() <= 30 &&
+        data.notes is string && data.notes.size() <= 1000 &&
+        data.status is string && data.status in ['Pending', 'Approved', 'Rejected', 'Completed'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGymInquiry(data) {
+      return data.keys().hasAll(['id', 'userId', 'fullName', 'email', 'phone', 'preferredPlan', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'fullName', 'email', 'phone', 'preferredPlan', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.preferredPlan is string && data.preferredPlan in ['Monthly Standard', 'Quarterly Executive', 'Annual Family', 'Personal Training'] &&
+        data.status is string && data.status in ['Pending', 'Approved', 'Closed'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVisitorLog(data) {
+      return data.keys().hasAll(['id', 'userId', 'visitorName', 'purpose', 'houseNumber', 'entryTime', 'exitTime', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'visitorName', 'purpose', 'houseNumber', 'entryTime', 'exitTime', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        data.visitorName is string && data.visitorName.size() >= 2 && data.visitorName.size() <= 100 &&
+        data.purpose is string && data.purpose.size() <= 200 &&
+        data.houseNumber is string && data.houseNumber.size() <= 30 &&
+        data.entryTime is string && data.entryTime.size() <= 50 &&
+        data.exitTime is string && data.exitTime.size() <= 50 &&
+        data.status is string && data.status in ['Pre-Registered', 'Checked-In', 'Checked-Out'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'content', 'priority', 'publishedDate', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'title', 'category', 'content', 'priority', 'publishedDate', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 150 &&
+        data.category is string && data.category in ['Security', 'Community', 'Maintenance', 'Event'] &&
+        data.content is string && data.content.size() >= 2 && data.content.size() <= 2000 &&
+        data.priority is string && data.priority in ['Normal', 'High', 'Urgent'] &&
+        data.publishedDate is string && data.publishedDate.size() <= 40 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'caption', 'imageUrl', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'title', 'category', 'caption', 'imageUrl', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+        data.category is string && data.category in [
+          'Modern Houses', 'Society Entrance', 'Roads', 'Parks',
+          'Gardens', 'Gym', 'Security', 'Night View', 'Community Facilities'
+        ] &&
+        data.caption is string && data.caption.size() <= 400 &&
+        data.imageUrl is string && data.imageUrl.size() <= 500 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'email', 'phone', 'subject', 'message', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'name', 'email', 'phone', 'subject', 'message', 'status', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 150 &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 2000 &&
+        data.status is string && data.status in ['Unread', 'Responded', 'Archived'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSocietySettings(data) {
+      return data.keys().hasAll([
+          'id', 'heroHeading', 'heroDescription', 'totalHouses', 'availableHouses',
+          'totalParks', 'gymFacilitiesCount', 'securityCheckpoints', 'communityFacilities',
+          'officeAddress', 'contactPhone', 'contactEmail', 'emergencyPhone',
+          'mapCoordinatesConfigured', 'mapSectorNote', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'heroHeading', 'heroDescription', 'totalHouses', 'availableHouses',
+          'totalParks', 'gymFacilitiesCount', 'securityCheckpoints', 'communityFacilities',
+          'officeAddress', 'contactPhone', 'contactEmail', 'emergencyPhone',
+          'mapCoordinatesConfigured', 'mapSectorNote', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.heroHeading is string && data.heroHeading.size() <= 160 &&
+        data.heroDescription is string && data.heroDescription.size() <= 500 &&
+        data.totalHouses is number && data.totalHouses >= 0 &&
+        data.availableHouses is number && data.availableHouses >= 0 &&
+        data.totalParks is number && data.totalParks >= 0 &&
+        data.gymFacilitiesCount is number && data.gymFacilitiesCount >= 0 &&
+        data.securityCheckpoints is number && data.securityCheckpoints >= 0 &&
+        data.communityFacilities is number && data.communityFacilities >= 0 &&
+        data.officeAddress is string && data.officeAddress.size() <= 250 &&
+        data.contactPhone is string && data.contactPhone.size() <= 40 &&
+        data.contactEmail is string && data.contactEmail.size() <= 150 &&
+        data.emergencyPhone is string && data.emergencyPhone.size() <= 40 &&
+        data.mapCoordinatesConfigured is bool &&
+        data.mapSectorNote is string && data.mapSectorNote.size() <= 250 &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // 3. COLLECTION MATCH BLOCKS
+    // =========================================================================
+
+    match /test/{docId} {
+      allow get: if isValidId(docId) && false;
+      allow list, write: if false;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin() && existing().uid is string;
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdminRecord(incoming()) && incoming().uid == adminId && incoming().grantedAt == request.time;
+      allow update: if isAdmin() && isValidId(adminId) && isValidAdminRecord(incoming()) && incoming().uid == existing().uid && incoming().grantedAt == existing().grantedAt;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (request.auth.uid == userId && incoming().role == 'resident' && incoming().status == 'active') ||
+          isAdmin()
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            request.auth.uid == userId &&
+            existing().status == 'active' &&
+            incoming().role == existing().role &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'favoriteHouseIds', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /houses/{houseId} {
+      allow get: if isValidId(houseId);
+      allow list: if existing().availability in ['Available', 'Reserved', 'Sold'];
+      allow create: if isAdmin() &&
+        isValidId(houseId) &&
+        isValidHouse(incoming()) &&
+        incoming().id == houseId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(houseId) &&
+        isValidHouse(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(houseId);
+    }
+
+    match /parks/{parkId} {
+      allow get: if isValidId(parkId);
+      allow list: if existing().id is string;
+      allow create: if isAdmin() &&
+        isValidId(parkId) &&
+        isValidPark(incoming()) &&
+        incoming().id == parkId &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(parkId) &&
+        isValidPark(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(parkId);
+    }
+
+    match /amenities/{amenityId} {
+      allow get: if isValidId(amenityId);
+      allow list: if existing().category in ['Gym', 'Security', 'Community', 'Recreation'];
+      allow create: if isAdmin() &&
+        isValidId(amenityId) &&
+        isValidAmenity(incoming()) &&
+        incoming().id == amenityId &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(amenityId) &&
+        isValidAmenity(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(amenityId);
+    }
+
+    match /houseInquiries/{inquiryId} {
+      allow get: if isSignedIn() && isValidId(inquiryId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidHouseInquiry(incoming()) &&
+        incoming().id == inquiryId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            incoming().status == 'Pending' &&
+            incoming().adminResponse == '' &&
+            exists(/databases/$(database)/documents/houses/$(incoming().houseId))
+          ) ||
+          isAdmin()
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidHouseInquiry(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            existing().userId == request.auth.uid &&
+            incoming().houseId == existing().houseId &&
+            existing().status == 'Pending' &&
+            incoming().status == 'Pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['message', 'phone', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    match /visitBookings/{bookingId} {
+      allow get: if isSignedIn() && isValidId(bookingId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidVisitBooking(incoming()) &&
+        incoming().id == bookingId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            incoming().status == 'Pending' &&
+            exists(/databases/$(database)/documents/houses/$(incoming().houseId))
+          ) ||
+          isAdmin()
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidVisitBooking(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            existing().userId == request.auth.uid &&
+            incoming().houseId == existing().houseId &&
+            existing().status == 'Pending' &&
+            incoming().status == 'Pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['preferredDate', 'preferredTime', 'notes', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(bookingId);
+    }
+
+    match /gymInquiries/{inquiryId} {
+      allow get: if isSignedIn() && isValidId(inquiryId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidGymInquiry(incoming()) &&
+        incoming().id == inquiryId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (incoming().status == 'Pending' || isAdmin());
+      allow update: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidGymInquiry(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            existing().userId == request.auth.uid &&
+            existing().status == 'Pending' &&
+            incoming().status == 'Pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['preferredPlan', 'phone', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    match /visitorLogs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(logId) &&
+        isValidVisitorLog(incoming()) &&
+        incoming().id == logId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(logId) &&
+        isValidVisitorLog(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            existing().userId == request.auth.uid &&
+            existing().status != 'Checked-Out' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['exitTime', 'status', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+      allow delete: if isAdmin() && isValidId(logId);
+    }
+
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId);
+      allow list: if existing().category in ['Security', 'Community', 'Maintenance', 'Event'];
+      allow create: if isAdmin() &&
+        isValidId(announcementId) &&
+        isValidAnnouncement(incoming()) &&
+        incoming().id == announcementId &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(announcementId) &&
+        isValidAnnouncement(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(announcementId);
+    }
+
+    match /gallery/{galleryId} {
+      allow get: if isValidId(galleryId);
+      allow list: if existing().id is string;
+      allow create: if isAdmin() &&
+        isValidId(galleryId) &&
+        isValidGalleryItem(incoming()) &&
+        incoming().id == galleryId &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(galleryId) &&
+        isValidGalleryItem(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(galleryId);
+    }
+
+    match /contactMessages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(messageId) &&
+        isValidContactMessage(incoming()) &&
+        incoming().id == messageId &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (incoming().status == 'Unread' || isAdmin());
+      allow update: if isAdmin() &&
+        isValidId(messageId) &&
+        isValidContactMessage(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(messageId);
+    }
+
+    match /societySettings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if existing().id is string;
+      allow create: if isAdmin() &&
+        isValidId(settingId) &&
+        isValidSocietySettings(incoming()) &&
+        incoming().id == settingId &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(settingId) &&
+        isValidSocietySettings(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+  }
+}

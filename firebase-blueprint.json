@@ -1,0 +1,778 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered resident or prospective homebuyer profile with isolated PII access.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full display name of the user",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "maxLength": 30
+        },
+        "role": {
+          "type": "string",
+          "description": "User authorization role",
+          "enum": ["resident", "admin"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Account status",
+          "enum": ["active", "suspended"]
+        },
+        "favoriteHouseIds": {
+          "type": "array",
+          "description": "Bounded list of saved house IDs (up to 20)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": ["uid", "fullName", "email", "phone", "role", "status", "favoriteHouseIds", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator registry document keyed by UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150
+        },
+        "grantedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    },
+    "House": {
+      "title": "House",
+      "description": "Residential property listing in Green Valley Residencia.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "houseNumber": {
+          "type": "string",
+          "description": "Plot or house number e.g. GV-101",
+          "minLength": 2,
+          "maxLength": 30
+        },
+        "title": {
+          "type": "string",
+          "description": "Architectural title of the residence",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "houseType": {
+          "type": "string",
+          "enum": ["3 Marla", "5 Marla", "10 Marla", "1 Kanal"]
+        },
+        "plotSize": {
+          "type": "string",
+          "enum": ["3 Marla", "5 Marla", "10 Marla", "1 Kanal"]
+        },
+        "bedrooms": {
+          "type": "number",
+          "description": "Number of bedrooms"
+        },
+        "bathrooms": {
+          "type": "number",
+          "description": "Number of bathrooms"
+        },
+        "kitchenDetails": {
+          "type": "string",
+          "description": "Kitchen layout and finish details",
+          "maxLength": 300
+        },
+        "coveredAreaSqFt": {
+          "type": "number",
+          "description": "Covered area in square feet"
+        },
+        "pricePKR": {
+          "type": "number",
+          "description": "Listing price in PKR"
+        },
+        "availability": {
+          "type": "string",
+          "enum": ["Available", "Reserved", "Sold"]
+        },
+        "sector": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "street": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "floorPlanSummary": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "images": {
+          "type": "array",
+          "description": "Bounded list of image URLs (up to 6)"
+        },
+        "coordinates3D": {
+          "type": "object",
+          "description": "X and Z position in the 3D colony layout"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "houseNumber",
+        "title",
+        "houseType",
+        "plotSize",
+        "bedrooms",
+        "bathrooms",
+        "kitchenDetails",
+        "coveredAreaSqFt",
+        "pricePKR",
+        "availability",
+        "sector",
+        "street",
+        "description",
+        "floorPlanSummary",
+        "images",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Park": {
+      "title": "Park",
+      "description": "Landscaped park or botanical garden in the society.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "sector": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "areaSize": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "openingHours": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "facilities": {
+          "type": "array",
+          "description": "Bounded list of park facilities (up to 10)"
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "sector", "areaSize", "openingHours", "description", "facilities", "imageUrl", "updatedAt"]
+    },
+    "Amenity": {
+      "title": "Amenity",
+      "description": "Community facility such as Gym, Security Gate, or Community Center.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Gym", "Security", "Community", "Recreation"]
+        },
+        "openingHours": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "highlights": {
+          "type": "array",
+          "description": "Bounded list of facility features (up to 10)"
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "category", "openingHours", "description", "highlights", "imageUrl", "updatedAt"]
+    },
+    "HouseInquiry": {
+      "title": "HouseInquiry",
+      "description": "Prospective buyer inquiry for a specific house.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "houseId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "houseNumber": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "message": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Responded", "Closed"]
+        },
+        "adminResponse": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "houseId", "houseNumber", "fullName", "email", "phone", "message", "status", "adminResponse", "createdAt", "updatedAt"]
+    },
+    "VisitBooking": {
+      "title": "VisitBooking",
+      "description": "On-site property tour appointment request.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "houseId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "houseNumber": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "preferredDate": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "preferredTime": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Approved", "Rejected", "Completed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "houseId", "houseNumber", "fullName", "email", "phone", "preferredDate", "preferredTime", "notes", "status", "createdAt", "updatedAt"]
+    },
+    "GymInquiry": {
+      "title": "GymInquiry",
+      "description": "Gym membership inquiry submitted by a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "preferredPlan": {
+          "type": "string",
+          "enum": ["Monthly Standard", "Quarterly Executive", "Annual Family", "Personal Training"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Approved", "Closed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "fullName", "email", "phone", "preferredPlan", "status", "createdAt", "updatedAt"]
+    },
+    "VisitorLog": {
+      "title": "VisitorLog",
+      "description": "Security gate visitor entry and exit record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "visitorName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "houseNumber": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "entryTime": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "exitTime": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pre-Registered", "Checked-In", "Checked-Out"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "visitorName", "purpose", "houseNumber", "entryTime", "exitTime", "status", "createdAt", "updatedAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Community and security announcements.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 150
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Security", "Community", "Maintenance", "Event"]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["Normal", "High", "Urgent"]
+        },
+        "publishedDate": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "category", "content", "priority", "publishedDate", "createdAt"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Curated architectural and lifestyle photograph in the society gallery.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Modern Houses",
+            "Society Entrance",
+            "Roads",
+            "Parks",
+            "Gardens",
+            "Gym",
+            "Security",
+            "Night View",
+            "Community Facilities"
+          ]
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "category", "caption", "imageUrl", "createdAt"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "General contact inquiry submitted from the Contact section.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "message": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Unread", "Responded", "Archived"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "name", "email", "phone", "subject", "message", "status", "createdAt", "updatedAt"]
+    },
+    "SocietySettings": {
+      "title": "SocietySettings",
+      "description": "Configurable global statistics, contact details, and homepage copy.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "heroHeading": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "heroDescription": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "totalHouses": {
+          "type": "number"
+        },
+        "availableHouses": {
+          "type": "number"
+        },
+        "totalParks": {
+          "type": "number"
+        },
+        "gymFacilitiesCount": {
+          "type": "number"
+        },
+        "securityCheckpoints": {
+          "type": "number"
+        },
+        "communityFacilities": {
+          "type": "number"
+        },
+        "officeAddress": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "contactPhone": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "contactEmail": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "emergencyPhone": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "mapCoordinatesConfigured": {
+          "type": "boolean"
+        },
+        "mapSectorNote": {
+          "type": "string",
+          "maxLength": 250
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "heroHeading",
+        "heroDescription",
+        "totalHouses",
+        "availableHouses",
+        "totalParks",
+        "gymFacilitiesCount",
+        "securityCheckpoints",
+        "communityFacilities",
+        "officeAddress",
+        "contactPhone",
+        "contactEmail",
+        "emergencyPhone",
+        "mapCoordinatesConfigured",
+        "mapSectorNote",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document with strict owner/admin read and write isolation."
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Trusted administrator lookup table."
+    },
+    "/houses/{houseId}": {
+      "schema": "House",
+      "description": "Publicly readable residential house inventory managed by administrators."
+    },
+    "/parks/{parkId}": {
+      "schema": "Park",
+      "description": "Publicly readable landscaped parks and botanical gardens."
+    },
+    "/amenities/{amenityId}": {
+      "schema": "Amenity",
+      "description": "Publicly readable society facilities including gym and security checkpoints."
+    },
+    "/houseInquiries/{inquiryId}": {
+      "schema": "HouseInquiry",
+      "description": "Private buyer inquiries accessible only to the submitting user and administrators."
+    },
+    "/visitBookings/{bookingId}": {
+      "schema": "VisitBooking",
+      "description": "Private property visit appointments accessible only to the submitting user and administrators."
+    },
+    "/gymInquiries/{inquiryId}": {
+      "schema": "GymInquiry",
+      "description": "Private gym membership requests accessible only to the submitting user and administrators."
+    },
+    "/visitorLogs/{logId}": {
+      "schema": "VisitorLog",
+      "description": "Security gate visitor entry logs accessible only to the resident who registered the visitor and administrators."
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Community and security notices readable by residents and visitors, managed by administrators."
+    },
+    "/gallery/{galleryId}": {
+      "schema": "GalleryItem",
+      "description": "Architectural and community photo gallery items."
+    },
+    "/contactMessages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Contact inquiries accessible only to the sender and administrators."
+    },
+    "/societySettings/{settingId}": {
+      "schema": "SocietySettings",
+      "description": "Global society statistics and contact configuration."
+    }
+  }
+}
