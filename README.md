@@ -1,15 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Green Valley Residencia
+
+A modern and interactive housing society management platform designed to provide a complete digital experience for residents, property management, and community administration.
+
+## Features
+
+- Interactive 3D housing society experience
+- Modern property and villa showcase
+- Community parks and amenities
+- Resident dashboard
+- Admin dashboard
+- User authentication
+- Property information and listings
+- Gallery and community sections
+- Firebase integration
+- Responsive and modern UI
+
+## Tech Stack
+
+- React
+- TypeScript
+- Vite
+- Firebase
+- Firestore
+- CSS
+- 3D Web Experience
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+### Prerequisites
 
+- Node.js
+- npm
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Installation
 
+1. Clone the repository:
+
+```bash
+git clone https://github.com/waqasahmad412/green-valeey-house-scheme.git
